@@ -24,30 +24,15 @@ container = tk.Frame(root, bg=BG)
 container.pack(fill="both", expand=True, padx=20, pady=20)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CAPTCHA_DIR = os.path.join(BASE_DIR, "captcha")
 CORRECT_ORDER = [1, 2, 3, 4]
-PIECE_SIZE = 90
-
-captcha_images = {}
-for piece in CORRECT_ORDER:
-    path = os.path.join(CAPTCHA_DIR, f"{piece}.png")
-    captcha_images[piece] = tk.PhotoImage(file=path).subsample(8)
-captcha_empty = tk.PhotoImage(width=PIECE_SIZE, height=PIECE_SIZE)
-
-captcha_host = None
-captcha_slots = []
-captcha_placed = []
-captcha_passed = False
 
 
 def clear_screen():
     for w in container.winfo_children():
         w.destroy()
 
-
 def make_title(text):
     return tk.Label(container, text=text, bg=BG, fg=FIELD_FG, font=FONT_TITLE)
-
 
 def make_label(text):
     return tk.Label(container, text=text, bg=BG, fg=FIELD_FG,
@@ -66,83 +51,12 @@ def make_button(text, command, parent=None):
     host = container if parent is None else parent
     return tk.Button(host, text=text, command=command, font=FONT_BUTTON)
 
-
-def build_captcha():
-    global captcha_slots, captcha_placed, captcha_passed
-    for w in captcha_host.winfo_children():
-        w.destroy()
-    captcha_slots = []
-    captcha_placed = []
-    captcha_passed = False
-    text = ("Соберите картинку: кликайте фрагменты по порядку. "
-            "Лишний фрагмент уберите кликом по нему.")
-    tk.Label(captcha_host, text=text, bg=BG, fg=FIELD_FG, font=FONT_LABEL,
-             anchor="w", wraplength=640, justify="left").pack(fill="x")
-    board = tk.Frame(captcha_host, bg=BG)
-    board.pack(pady=6)
-    for i in range(4):
-        slot = tk.Button(board, image=captcha_empty, relief="solid", borderwidth=1,
-                         cursor="hand2", command=lambda i=i: remove_piece(i))
-        slot.grid(row=i // 2, column=i % 2)
-        captcha_slots.append(slot)
-    order = CORRECT_ORDER[:]
-    while order == CORRECT_ORDER:
-        random.shuffle(order)
-    pieces = tk.Frame(captcha_host, bg=BG)
-    pieces.pack(pady=(0, 6))
-    for piece in order:
-        btn = tk.Button(pieces, image=captcha_images[piece], relief="solid",
-                        borderwidth=1, cursor="hand2", command=lambda p=piece: place_piece(p))
-        btn.pack(side="left", padx=3)
-
-
-def redraw_captcha():
-    for i in range(4):
-        img = captcha_images[captcha_placed[i]] if i < len(captcha_placed) else captcha_empty
-        captcha_slots[i].configure(image=img)
-
-
-def place_piece(piece):
-    if captcha_passed or piece in captcha_placed:
-        return
-    captcha_placed.append(piece)
-    redraw_captcha()
-    if len(captcha_placed) == 4:
-        check_captcha()
-
-
-def remove_piece(index):
-    if captcha_passed or index >= len(captcha_placed):
-        return
-    captcha_placed.pop(index)
-    redraw_captcha()
-
-
-def check_captcha():
-    global captcha_passed
-    if captcha_placed == CORRECT_ORDER:
-        captcha_passed = True
-        messagebox.showinfo("Капча",
-                            "Картинка собрана верно. Теперь можно нажимать «Войти».")
-        return
-    if register_fail(ENTRY_LOGIN.get().strip()):
-        messagebox.showerror("Блокировка",
-                             "Вы заблокированы. Обратитесь к администратору")
-    else:
-        messagebox.showerror("Капча", "Картинка собрана неверно. Попробуйте ещё раз.")
-    build_captcha()
-
-
 def try_login(login, password):
     global CURRENT_USER
     login = login.strip()
     password = password.strip()
     if not login or not password:
         messagebox.showwarning("Внимание", "Заполните логин и пароль.")
-        return
-    if not captcha_passed:
-        messagebox.showwarning("Капча",
-                               "Сначала соберите капчу, затем нажимайте «Войти».")
         return
     user = find_user(login, password)
     if user is None:
@@ -169,7 +83,7 @@ def try_login(login, password):
 
 
 def open_login():
-    global ENTRY_LOGIN, captcha_host
+    global ENTRY_LOGIN
     clear_screen()
     make_title("Вход в систему").pack(pady=(0, 10))
 
@@ -190,10 +104,6 @@ def open_login():
                    bg=BG, fg=FIELD_FG, activebackground=BG,
                    activeforeground=FIELD_FG, selectcolor=FIELD_BG,
                    font=FONT_LABEL, anchor="w").pack(fill="x", pady=(0, 10))
-
-    captcha_host = tk.Frame(container, bg=BG)
-    captcha_host.pack(fill="x", pady=(0, 10))
-    build_captcha()
 
     make_button("Войти",
                 lambda: try_login(ENTRY_LOGIN.get(), entry_pass.get())
